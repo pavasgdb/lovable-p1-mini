@@ -1,8 +1,8 @@
 # Lovable P1 Mini
 
 ### Prerequisites
-- Node 18+ and npm
-- Python 3.10+
+- Node.js 18+ and npm (recommended **v24.5.0**)
+- Python 3.10+ (recommended **v3.13.5**)
 
 ### Install and run the frontend
 ```bash
