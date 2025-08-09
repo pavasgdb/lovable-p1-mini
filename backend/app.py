@@ -15,13 +15,17 @@ Response contract required from the model:
   ]
 }
 """
-
+import argparse
+import logging
+from src.constants import DEFAULT_TEMPLATE_REACT_APP_DIR, DEFAULT_GENERATED_APP_DIR, DEFAULT_MODEL
 from src.logger import setup_logging
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 from pathlib import Path
 
 
-app = Flask(__name__)
+app = Flask("lovable-p1-mini")
+CORS(app)
 
 
 # Define the generate_app function as provided by the user
@@ -30,10 +34,6 @@ def generate_app(
     model: str,
     app_dir: Path,
     out_root: Path,
-    allow_public: bool,
-    overwrite: bool,
-    dry_run: bool,
-    auto_install: bool,
     raw_response_file: str,
 ) -> None:
     """
@@ -43,47 +43,22 @@ def generate_app(
     """
     from src.generate_app import generate_app as generate_app_impl
 
-    generate_app_impl(
-        prompt, model, app_dir, out_root, allow_public, overwrite, dry_run, auto_install, raw_response_file
+    logging.info(f"--- Calling generate_app with the following parameters ---")
+    logging.info(f"Prompt: {prompt}")
+    logging.info(f"Model: {model}")
+    logging.info(f"App Directory: {app_dir}")
+    logging.info(f"Output Root: {out_root}")
+    logging.info(f"Raw Response File: {raw_response_file}")
+    return generate_app_impl(
+        prompt=prompt,
+        model=model,
+        app_dir=app_dir,
+        out_root=out_root,
+        raw_response_file=raw_response_file,
     )
-    print(f"--- Calling generate_app with the following parameters ---")
-    print(f"Prompt: {prompt}")
-    print(f"Model: {model}")
-    print(f"App Directory: {app_dir}")
-    print(f"Output Root: {out_root}")
-    print(f"Allow Public: {allow_public}")
-    print(f"Overwrite: {overwrite}")
-    print(f"Dry Run: {dry_run}")
-    print(f"Auto Install: {auto_install}")
-    print(f"Raw Response File: {raw_response_file}")
-
-    # Example: Create dummy directories to show Path objects are used
-    try:
-        if not dry_run:
-            if not app_dir.exists():
-                app_dir.mkdir(parents=True, exist_ok=True)
-                print(f"Created app_dir: {app_dir}")
-            if not out_root.exists():
-                out_root.mkdir(parents=True, exist_ok=True)
-                print(f"Created out_root: {out_root}")
-
-            # Simulate writing to a raw_response_file
-            if raw_response_file:
-                # Ensure the directory for raw_response_file exists
-                raw_response_path = Path(raw_response_file)
-                raw_response_path.parent.mkdir(parents=True, exist_ok=True)
-                with open(raw_response_path, "w") as f:
-                    f.write(f"Generated app for prompt: '{prompt}' using model: '{model}'.\n")
-                    f.write(f"Parameters: {locals()}\n")
-                print(f"Wrote dummy content to: {raw_response_file}")
-
-        print(f"--- generate_app function simulated successfully ---")
-    except Exception as e:
-        print(f"Error in generate_app simulation: {e}")
-        # In a real scenario, you might raise this exception or log it more robustly.
 
 
-@app.route("/generate", methods=["POST"])
+@app.route("/api/generate", methods=["POST"])
 def handle_generate_request():
     """
     Handles POST requests to the /generate endpoint.
@@ -99,46 +74,45 @@ def handle_generate_request():
     # Use .get() to safely retrieve values, providing a default or handling missing ones
     try:
         prompt = data.get("prompt")
-        model = data.get("model")
+        model = data.get("model", DEFAULT_MODEL)
         # Path objects need to be created from strings
-        app_dir = Path(data.get("app_dir", "."))  # Default to current directory if not provided
-        out_root = Path(data.get("out_root", "."))  # Default to current directory if not provided
-
-        # Booleans need explicit conversion from potential string/int representations
-        allow_public = bool(data.get("allow_public", False))
-        overwrite = bool(data.get("overwrite", False))
-        dry_run = bool(data.get("dry_run", False))
-        auto_install = bool(data.get("auto_install", False))
-
-        raw_response_file = data.get("raw_response_file")
-
+        app_dir = Path(
+            data.get("app_dir", DEFAULT_TEMPLATE_REACT_APP_DIR)
+        )  # Default to current directory if not provided
+        out_root = Path(data.get("out_root", DEFAULT_GENERATED_APP_DIR))  # Default to current directory if not provided
+        raw_response_file = data.get("raw_response_file", None)
         # Basic validation for essential parameters
-        if prompt is None or model is None:
+        if prompt is None:
             return jsonify({"error": "Missing 'prompt' or 'model' in request"}), 400
 
         # Call the generate_app function with the extracted parameters
-        generate_app(
+        response = generate_app(
             prompt=prompt,
             model=model,
             app_dir=app_dir,
             out_root=out_root,
-            allow_public=allow_public,
-            overwrite=overwrite,
-            dry_run=dry_run,
-            auto_install=auto_install,
             raw_response_file=raw_response_file,
         )
 
-        return jsonify({"message": "App generation request processed successfully", "parameters_received": data}), 200
+        return jsonify(response), 200
 
     except Exception as e:
+        logging.exception(e)
         # Catch any errors during parameter extraction or function call
         return jsonify({"error": f"An error occurred: {str(e)}"}), 500
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Backend for Gemini-powered generator for the Vite + React + Material UI template."
+    )
+    parser.add_argument("--port", type=int, default=5000, help="Port to run the server on")
+    parser.add_argument("--verbose", action="store_true", help="Verbose logging")
+    return parser.parse_args()
+
+
 # Run the Flask application
 if __name__ == "__main__":
-    # Use debug=True for development to get detailed error messages
-    # For production, set debug=False and use a production-ready WSGI server like Gunicorn
-    setup_logging(filename="app.log")
-    app.run(debug=True, port=5000)
+    args = parse_args()
+    setup_logging(filename="app.log", verbose=args.verbose)
+    app.run(port=args.port)

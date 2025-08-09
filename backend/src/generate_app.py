@@ -6,10 +6,10 @@ from datetime import datetime
 import logging
 import argparse
 
-from constants import TEMPLATE_REACT_APP_DIR, GENERATED_APP_DIR
-from utils import extract_json_block, sanitize_backtick_json, copy_template_to_uid, write_files
-from gemini_handler import call_gemini
-from logger import setup_logging
+from .constants import DEFAULT_TEMPLATE_REACT_APP_DIR, DEFAULT_GENERATED_APP_DIR, DEFAULT_MODEL
+from .utils import extract_json_block, sanitize_backtick_json, copy_template_to_uid, write_files
+from .gemini_handler import call_gemini
+from .logger import setup_logging
 
 
 def generate_app(
@@ -90,22 +90,50 @@ def generate_app(
             rel = p.relative_to(target_dir)
             logging.info(f" - {rel}")
 
-    return target_dir
+    rows = []
+    for file in data.get("files", []):
+        file_name = file["path"].split("/")[-1]
+        file_type = "component"
+        if "pages" in file_name:
+            file_type = "page"
+        elif ".css" in file_name:
+            file_type = "style"
+        elif ".json" in file_name:
+            file_type = "config"
+        content = file.get("content", "")
+        if not content:
+            content = file.get("content_lines", [])
+            content = "\n".join(str(line) for line in content)
+
+        row = {
+            "name": file_name,
+            "path": file["path"],
+            "type": file_type,
+            "content": content,
+        }
+        rows.append(row)
+
+    response = {
+        "uid": uid,
+        "target_dir": str(target_dir),
+        "files": rows,
+    }
+    return response
 
 
 def parse_args() -> argparse.Namespace:
 
     parser = argparse.ArgumentParser(description="Generate React code into a Material UI template using Google Gemini.")
     parser.add_argument("--prompt", help="User requirement text", required=False)
-    parser.add_argument("--model", default="gemini-2.5-flash", help="Gemini model name (default: gemini-2.5-flash)")
+    parser.add_argument("--model", default=DEFAULT_MODEL, help=f"Gemini model name (default: {DEFAULT_MODEL})")
     parser.add_argument(
         "--app-dir",
-        default=str(TEMPLATE_REACT_APP_DIR),
-        help=f"Path to the React template root (default: {TEMPLATE_REACT_APP_DIR})",
+        default=str(DEFAULT_TEMPLATE_REACT_APP_DIR),
+        help=f"Path to the React template root (default: {DEFAULT_TEMPLATE_REACT_APP_DIR})",
     )
     parser.add_argument(
         "--out-root",
-        default=str(GENERATED_APP_DIR),
+        default=str(DEFAULT_GENERATED_APP_DIR),
         help="Output base dir to place generated app under a unique id",
     )
     parser.add_argument("--allow-public", action="store_true", help="Allow writing under public/ as well as src/")
@@ -126,7 +154,7 @@ def parse_args() -> argparse.Namespace:
 if __name__ == "__main__":
     args = parse_args()
     setup_logging(filename="generate_app.log", verbose=args.verbose)
-    target_dir = generate_app(
+    response = generate_app(
         args.prompt,
         args.model,
         args.app_dir,
@@ -136,9 +164,9 @@ if __name__ == "__main__":
         args.auto_install,
         args.raw_response_file,
     )
-    logging.info(f"App generated at {target_dir}")
-    print(f"uid: {target_dir.split('/')[-1]}")
+    logging.info(f"App generated at {response['target_dir']}")
+    print(f"uid: {response['uid']}")
     print(f"Steps:")
-    print(f"Go to folder `cd {target_dir}`")
+    print(f"Go to folder `cd {response['target_dir']}`")
     print(f"run `npm install` to install dependencies")
     print(f"run `npm run dev` to start the app")

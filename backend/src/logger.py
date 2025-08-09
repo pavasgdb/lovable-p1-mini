@@ -1,5 +1,6 @@
 import logging
-from constants import LOG_DIR
+
+from .constants import LOG_DIR
 
 
 def setup_logging(filename: str, verbose: bool = False) -> None:

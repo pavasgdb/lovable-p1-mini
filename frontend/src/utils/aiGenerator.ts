@@ -2,11 +2,11 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GeneratedApp, AppFile } from '../types';
 
 // Backend API configuration
-const BACKEND_API_URL = import.meta.env.VITE_BACKEND_API_URL || 'http://localhost:8000';
+const BACKEND_API_URL = import.meta.env.VITE_BACKEND_API_URL || 'http://127.0.0.1:5000';
 
 const generateThemeColors = (prompt: string): string[] => {
   const lowerPrompt = prompt.toLowerCase();
-  
+
   // Generate theme colors based on app type
   if (lowerPrompt.includes('health') || lowerPrompt.includes('fitness')) {
     return ['#10B981', '#059669', '#D1FAE5', '#34D399'];
@@ -30,16 +30,16 @@ const extractAppName = (prompt: string): string => {
     /([a-zA-Z]+) management/i,
     /([a-zA-Z]+) tracker/i
   ];
-  
+
   for (const pattern of patterns) {
     const match = prompt.match(pattern);
     if (match) {
-      return match[1].trim().split(' ').map(word => 
+      return match[1].trim().split(' ').map(word =>
         word.charAt(0).toUpperCase() + word.slice(1)
       ).join(' ');
     }
   }
-  
+
   // Fallback name generation
   if (prompt.toLowerCase().includes('task')) return 'TaskMaster';
   if (prompt.toLowerCase().includes('social')) return 'SocialHub';
@@ -47,13 +47,13 @@ const extractAppName = (prompt: string): string => {
   if (prompt.toLowerCase().includes('fitness')) return 'FitTracker';
   if (prompt.toLowerCase().includes('recipe')) return 'RecipeBox';
   if (prompt.toLowerCase().includes('budget')) return 'BudgetWise';
-  
+
   return 'MyApp';
 };
 
 const generateAppDescription = (prompt: string, appName: string): string => {
   const lowerPrompt = prompt.toLowerCase();
-  
+
   if (lowerPrompt.includes('task') || lowerPrompt.includes('todo')) {
     return `${appName} is a powerful task management application that helps you organize, prioritize, and track your daily activities with ease.`;
   } else if (lowerPrompt.includes('social')) {
@@ -67,7 +67,7 @@ const generateAppDescription = (prompt: string, appName: string): string => {
   } else if (lowerPrompt.includes('budget') || lowerPrompt.includes('finance')) {
     return `${appName} is a smart financial management tool that helps you track expenses, manage budgets, and achieve your financial goals.`;
   }
-  
+
   return `${appName} is a modern application designed to solve your specific needs with an intuitive and powerful interface.`;
 };
 
@@ -101,7 +101,7 @@ const readFilesFromDirectory = async (folderPath: string): Promise<AppFile[]> =>
 const getFileType = (fileName: string): 'component' | 'page' | 'style' | 'config' => {
   const extension = fileName.split('.').pop()?.toLowerCase();
   const lowerName = fileName.toLowerCase();
-  
+
   if (extension === 'css' || extension === 'scss' || extension === 'less') {
     return 'style';
   } else if (extension === 'json' || lowerName.includes('config') || lowerName.includes('package')) {
@@ -121,7 +121,7 @@ export const generateAppWithAI = async (prompt: string): Promise<GeneratedApp> =
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         prompt: prompt,
         mode: 'ai'
       }),
@@ -132,29 +132,21 @@ export const generateAppWithAI = async (prompt: string): Promise<GeneratedApp> =
     }
 
     const data = await response.json();
-    const folderPath = data.folder_path;
-
-    if (!folderPath) {
-      throw new Error('No folder path returned from backend');
-    }
-
-    // Read all files from the generated folder
-    const aiFiles = await readFilesFromDirectory(folderPath);
-    
     const appName = extractAppName(prompt);
     const themeColors = generateThemeColors(prompt);
-    
+
     return {
       id: Date.now().toString(),
       name: appName,
       description: generateAppDescription(prompt, appName),
       prompt,
       themeColors,
-      files: aiFiles,
+      mockup: '',
+      files: data.files,
       timestamp: Date.now(),
       mode: 'ai'
     };
-    
+
   } catch (error) {
     console.error('Backend AI generation failed:', error);
     // Fallback to mock generation if AI fails
@@ -166,7 +158,7 @@ const generateFallbackFiles = (prompt: string): AppFile[] => {
   const appName = extractAppName(prompt);
   const isTaskApp = prompt.toLowerCase().includes('task') || prompt.toLowerCase().includes('todo');
   const isSocialApp = prompt.toLowerCase().includes('social') || prompt.toLowerCase().includes('chat');
-  
+
   if (isTaskApp) {
     return [
       {
@@ -289,7 +281,7 @@ export interface User {
       }
     ];
   }
-  
+
   // Default fallback files
   return [
     {
@@ -383,7 +375,7 @@ export default Dashboard;`
 const generateFallbackApp = (prompt: string): GeneratedApp => {
   const appName = extractAppName(prompt);
   const themeColors = generateThemeColors(prompt);
-  
+
   return {
     id: Date.now().toString(),
     name: appName,

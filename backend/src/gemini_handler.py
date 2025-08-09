@@ -1,7 +1,6 @@
-from utils import load_api_key
-from constants import SYSTEM_INSTRUCTIONS
-
-from logger import logging
+import logging
+from .utils import load_api_key
+from .constants import SYSTEM_INSTRUCTIONS
 
 
 def call_gemini(prompt: str, model: str) -> str:

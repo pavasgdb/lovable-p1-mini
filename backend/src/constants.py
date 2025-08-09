@@ -2,8 +2,10 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).parent.parent
 LOG_DIR = PROJECT_ROOT / "logs"
-TEMPLATE_REACT_APP_DIR = PROJECT_ROOT / "template-react-ts"
-GENERATED_APP_DIR = PROJECT_ROOT / "generated-app"
+
+DEFAULT_MODEL = "gemini-2.5-flash"
+DEFAULT_TEMPLATE_REACT_APP_DIR = PROJECT_ROOT / "template-react-ts"
+DEFAULT_GENERATED_APP_DIR = PROJECT_ROOT / "generated-app"
 
 SYSTEM_INSTRUCTIONS = (
     "You are a senior Vite + React + TypeScript developer. Use Material UI (MUI) components imported from @mui/material:^7.3.1 and @mui/icons-material:^7.3.1 only. "
